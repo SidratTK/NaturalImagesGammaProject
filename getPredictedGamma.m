@@ -185,7 +185,7 @@ tols    = 1e-16;
 options = optimset('Display','off','MaxFunEvals',5e2,'MaxIter',5e2,'TolX',tols,'TolFun',tols,'TolCon',tols );
 X0  =  [max(yData)-min(yData)  min(yData)];  % overall gain & offset
 Low =  [0   0 ];
-Upp =  [Inf Inf];
+Upp =  [Inf min(yData)];
 funis = @(p,dd) p(1).*dd + p(2);
 
 [fitResult,~,~] = lsqcurvefit(funis,X0,xData,yData,Low,Upp,options);
