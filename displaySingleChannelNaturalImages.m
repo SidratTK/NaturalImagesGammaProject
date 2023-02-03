@@ -344,7 +344,7 @@ hImagePatchPredictionPlot = getPlotHandles(1,numPlots,[0.025 0.3 0.75 0.1],0.002
 hDataPlot = getPlotHandles(1,numPlots,[0.025 0.05 0.75 0.2],0.002);
 
 % Show actual versus predicted power
-[powerST,~,electrodeListPower] = getMeanEnergy(subjectName,expDate,protocolName);
+[powerST,powerBL,electrodeListPower] = getMeanEnergy(subjectName,expDate,protocolName);
 hPowerPredictionPlot = subplot('Position',[0.825 0.45 0.15 0.25]);
 hCorrelationPlotFull = subplot('Position',[0.825 0.225 0.15 0.125]);
 hCorrelationPlotSelected = subplot('Position',[0.825 0.05 0.15 0.125]);
@@ -406,7 +406,7 @@ hCorrelationPlotSelected = subplot('Position',[0.825 0.05 0.15 0.125]);
         
         %%%%%%%%%%% Plot the images and their predictions %%%%%%%%%%%%%%%%%
         allStimParams = plotImageData(hImagesPlot,hImagePatchesPlot,hImagePatchPredictionPlot,rawImageFolder,fValsToUse,channelNumber,subjectName,plotColor,selectOptions,radiusMatrixDeg);
-        allPower = squeeze(powerST(:,electrodeListPower==channelNumber,fValsToUse)); % Actual power
+        allPower = squeeze(powerST(:,electrodeListPower==channelNumber,fValsToUse)./powerBL(:,electrodeListPower==channelNumber,fValsToUse)); % Actual power
         [correlationsFull, correlationsSelected, predictionString, predictedPower, selectedImageIndices] = getAllCorrelations(subjectName,allStimParams,allPower);
         
         numStimuli = length(allStimParams);
@@ -919,21 +919,47 @@ for i=1:numImages
     plottingDetails.hImagePlot=hImagesPlot(i);
     plottingDetails.hImagePatches=hImagePatches(i);
     plottingDetails.colorNames=colorName;
-    [patchData,imageAxesDeg] = getImagePatches(imageFileName,channelNumber,subjectName,'',patchSizeDeg,plottingDetails);
+    [patchData,imageAxesDeg,rfOut] = getImagePatches(imageFileName,channelNumber,subjectName,'',patchSizeDeg,plottingDetails);
     
     stimParams = getSingleImageParameters(rgb2hsv(patchData{1}),imageAxesDeg,[0 0],radiusMatrixDeg,selectOptions,0);
+
+    rfRadDeg = max(rfOut.rfSizeAzi, rfOut.rfSizeEle);
+    checkSigDeg = 1;
+    tmpGratingParams = getSingleImageParametersGrating(rgb2hsv(patchData{1}),imageAxesDeg,[0 0],rfRadDeg,checkSigDeg);
+    if tmpGratingParams.categoryGrating || tmpGratingParams.michelsonConInPatch>=0.6
+        disp(['Img',num2str(i),' SF:',num2str(tmpGratingParams.spatialFreqCPD),' Or:',num2str(tmpGratingParams.orientationDeg),' Ov:',num2str(tmpGratingParams.oriVar),' MC:',num2str(tmpGratingParams.michelsonConInPatch)]);
+    end
+    stimParams.categoryGrating     = tmpGratingParams.categoryGrating;
+    stimParams.michelsonConInPatch = tmpGratingParams.michelsonConInPatch; 
+    if tmpGratingParams.categoryGrating
+        stimParams.sigmaDeg       = tmpGratingParams.sigmaDeg;
+        stimParams.spatialFreqCPD = tmpGratingParams.spatialFreqCPD;
+        stimParams.orientationDeg = tmpGratingParams.orientationDeg;
+        stimParams.contrastPC     = tmpGratingParams.contrastPC;
+        stimParams.spatialFreqPhaseDeg = tmpGratingParams.spatialFreqPhaseDeg;
+        stimParams.oriVar = tmpGratingParams.oriVar;
+    end  
 
     allStimParams{i} = stimParams;
     
     tmpGaborStim = gaborStim;
-    tmpGaborStim.hueDeg = stimParams.hueDeg;
-    tmpGaborStim.sat = stimParams.sat;
-    tmpGaborStim.contrastPC = stimParams.contrastPC;
-    tmpGaborStim.spatialFreqPhaseDeg = stimParams.spatialFreqPhaseDeg;
-    tmpGaborStim.radiusDeg = stimParams.radiusDeg;
-    
+    if stimParams.categoryGrating
+        tmpGaborStim.sigmaDeg      = stimParams.sigmaDeg;
+        tmpGaborStim.spatialFreqCPD= stimParams.spatialFreqCPD;
+        tmpGaborStim.orientationDeg= stimParams.orientationDeg;
+        tmpGaborStim.contrastPC    = stimParams.contrastPC;
+        tmpGaborStim.radiusDeg     = 3*stimParams.sigmaDeg;
+        tmpGaborStim.spatialFreqPhaseDeg = stimParams.spatialFreqPhaseDeg;
+    else 
+        tmpGaborStim.hueDeg = stimParams.hueDeg;
+        tmpGaborStim.sat = stimParams.sat;
+        tmpGaborStim.contrastPC = stimParams.contrastPC;
+        tmpGaborStim.spatialFreqPhaseDeg = stimParams.spatialFreqPhaseDeg;
+        tmpGaborStim.radiusDeg = stimParams.radiusDeg;
+    end
+
     tmpGaborPatch = makeGaborStimulus(tmpGaborStim,imageAxesDeg.xAxisDeg,imageAxesDeg.yAxisDeg,0);
-    image([-patchSizeDeg patchSizeDeg],[-patchSizeDeg patchSizeDeg],tmpGaborPatch,'Parent',hImagePatchPredictionPlot(i));
+    imagesc([-patchSizeDeg patchSizeDeg],[-patchSizeDeg patchSizeDeg],tmpGaborPatch,'Parent',hImagePatchPredictionPlot(i));
     
     if i>1
         set(hImagesPlot(i),'XTicklabel',[],'YTicklabel',[]);
