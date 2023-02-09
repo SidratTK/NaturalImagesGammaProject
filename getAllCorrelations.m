@@ -25,8 +25,7 @@ rMax = 10; % Large radius for which the gamma vs radius function saturates
 numStimuli = length(allStimParams);
 selectedImageIndices = [];
 for i=1:numStimuli
-    isNotPatch = allStimParams{i}.michelsonConInPatch>=0.6 || allStimParams{i}.categoryGrating;
-    if ~isNotPatch %  (allStimParams{i}.radiusDeg > rCutoff) %&& 
+    if (allStimParams{i}.radiusDeg > rCutoff) 
         selectedImageIndices = cat(2,selectedImageIndices,i);
     end
 end
