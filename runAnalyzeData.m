@@ -1,5 +1,7 @@
-selectOptions.meanThr = [0.1 0.1 0.1];
-selectOptions.stdThr = 1*selectOptions.meanThr;
+powerOption = 3; % 1 - ST power, 2 - ST/BL ratio, 3 - ST/BL ratio minus ST/BL ratio in HG
+
+selectOptions.meanThr = [0.05 0.05 0.05];
+selectOptions.stdThr = 2*selectOptions.meanThr;
 selectOptions.measure = 'diff';
 selectOptions.method = 'vector';
 
@@ -31,7 +33,7 @@ for i=1:length(posList)
         
         if ~isempty(dataType)
             disp(['Working on ' subjectName expDate protocolName ', set: ' dataType]);
-            [cFull,cSelected,numSI,predictionString] = analyzeData(subjectName,expDate,protocolName,imageFolderName,imageIndices,selectOptions,radiusMatrixDeg);
+            [cFull,cSelected,numSI,predictionString] = analyzeData(subjectName,expDate,protocolName,imageFolderName,imageIndices,powerOption,selectOptions,radiusMatrixDeg);
             correlationsFull = cat(2,correlationsFull,cFull);
             correlationsSelected = cat(2,correlationsSelected,cSelected);
             numSelectedImages = cat(2,numSelectedImages,numSI);

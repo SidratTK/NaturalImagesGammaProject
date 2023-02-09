@@ -13,8 +13,9 @@
 % Run this function as:
 % displaySingleChannelNaturalImages('alpaH','240817','GRF_002')
 
-function displaySingleChannelNaturalImages(subjectName,expDate,protocolName,selectOptions,radiusMatrixDeg,folderSourceString,gridType,gridLayout,badTrialNameStr,useCommonBadTrialsFlag)
+function displaySingleChannelNaturalImages(subjectName,expDate,protocolName,powerOption,selectOptions,radiusMatrixDeg,folderSourceString,gridType,gridLayout,badTrialNameStr,useCommonBadTrialsFlag)
 
+if ~exist('powerOption','var');         powerOption=3;                  end
 if ~exist('selectOptions','var');       selectOptions=[];               end
 if ~exist('radiusMatrixDeg','var');     radiusMatrixDeg=[];             end
 if ~exist('folderSourceString','var');  folderSourceString='';          end
@@ -24,8 +25,8 @@ if ~exist('badTrialNameStr','var');     badTrialNameStr = '';           end
 if ~exist('useCommonBadTrialsFlag','var'); useCommonBadTrialsFlag = 1;  end
 
 if isempty(selectOptions)
-    selectOptions.meanThr = [0.2 0.2 0.2];
-    selectOptions.stdThr = selectOptions.meanThr;
+    selectOptions.meanThr = [0.05 0.05 0.05];
+    selectOptions.stdThr = 2*selectOptions.meanThr;
     selectOptions.measure = 'diff';
     selectOptions.method = 'vector';
 end
@@ -345,6 +346,19 @@ hDataPlot = getPlotHandles(1,numPlots,[0.025 0.05 0.75 0.2],0.002);
 
 % Show actual versus predicted power
 [powerST,powerBL,electrodeListPower] = getMeanEnergy(subjectName,expDate,protocolName);
+if powerOption==1
+    % Do nothing. PowerST will be used.
+elseif powerOption==2
+    powerST = powerST ./ powerBL; % Ratio between ST and BL
+elseif powerOption==3
+    [powerST2,powerBL2] = getMeanEnergy(subjectName,expDate,protocolName,'',{[80 150]}); % Take power between 80 to 150 Hz
+    powerST = powerST ./ powerBL; % Ratio between ST and BL
+    powerST2 = powerST2 ./ powerBL2; % Ratio between ST and BL in high gamma
+    powerST = powerST - powerST2; % Difference in the ratios
+end
+
+
+
 hPowerPredictionPlot = subplot('Position',[0.825 0.45 0.15 0.25]);
 hCorrelationPlotFull = subplot('Position',[0.825 0.225 0.15 0.125]);
 hCorrelationPlotSelected = subplot('Position',[0.825 0.05 0.15 0.125]);
@@ -420,6 +434,7 @@ hCorrelationPlotSelected = subplot('Position',[0.825 0.05 0.15 0.125]);
             else
                 plot(hPowerPredictionPlot,allPower(i),predictedPower(i),'marker','o','color',colorNamesPower(i,:),'markerfacecolor',colorNamesPower(i,:));
             end
+            text(allPower(i),predictedPower(i)+0.001,num2str(i),'parent',hPowerPredictionPlot);
         end
         title(hPowerPredictionPlot,['rFull: ' num2str(round(correlationsFull(6),2)) ', rSel(N=' num2str(length(selectedImageIndices)) '):' num2str(round(correlationsSelected(6),2))]);
         xlabel(hPowerPredictionPlot,'Actual Gamma'); ylabel(hPowerPredictionPlot,'Predicted Gamma'); 
@@ -961,6 +976,10 @@ for i=1:numImages
     tmpGaborPatch = makeGaborStimulus(tmpGaborStim,imageAxesDeg.xAxisDeg,imageAxesDeg.yAxisDeg,0);
     imagesc([-patchSizeDeg patchSizeDeg],[-patchSizeDeg patchSizeDeg],tmpGaborPatch,'Parent',hImagePatchPredictionPlot(i));
     
+    % Gaussian
+    [~,~,boundaryX,boundaryY] = gauss2D([0 0 tmpGaborStim.radiusDeg tmpGaborStim.radiusDeg 0 1],imageAxesDeg.xAxisDeg,imageAxesDeg.yAxisDeg,[]);
+    hold(hImagePatches(i),'on');
+    plot(hImagePatches(i),boundaryX,boundaryY,'k');
     if i>1
         set(hImagesPlot(i),'XTicklabel',[],'YTicklabel',[]);
         set(hImagePatches(i),'XTicklabel',[],'YTicklabel',[]);
